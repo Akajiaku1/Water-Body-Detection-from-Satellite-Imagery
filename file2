@@ -1,0 +1,41 @@
+import rasterio
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Step 1: Load Green and SWIR bands
+green_path = 'path_to_green_band.tif'  # Landsat 8 Band 3 (Green)
+swir_path = 'path_to_swir_band.tif'    # Landsat 8 Band 6 (SWIR1)
+
+with rasterio.open(green_path) as green_src:
+    green_band = green_src.read(1).astype('float32')
+
+with rasterio.open(swir_path) as swir_src:
+    swir_band = swir_src.read(1).astype('float32')
+
+# Step 2: Normalize if needed (Optional: depends on dataset)
+green_band /= np.max(green_band)
+swir_band /= np.max(swir_band)
+
+# Step 3: Compute MNDWI
+mndwi = (green_band - swir_band) / (green_band + swir_band + 1e-6)
+
+# Step 4: Water Detection (MNDWI > 0)
+water_detected = mndwi > 0
+
+# Step 5: Visualization
+fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+
+axs[0].imshow(green_band, cmap='Greens')
+axs[0].set_title("Green Band")
+
+axs[1].imshow(mndwi, cmap='coolwarm')
+axs[1].set_title("MNDWI")
+
+axs[2].imshow(water_detected, cmap='Blues')
+axs[2].set_title("Detected Water Bodies")
+
+for ax in axs:
+    ax.axis('off')
+
+plt.tight_layout()
+plt.show()
