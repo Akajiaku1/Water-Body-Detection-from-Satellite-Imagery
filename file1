@@ -1,0 +1,48 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Step 1: Generate Synthetic Satellite Data (Green and SWIR bands)
+np.random.seed(42)  # For reproducibility
+image_shape = (100, 100)
+
+# Simulate water and non-water regions
+green_band = np.random.uniform(0.1, 0.6, image_shape)  # Green reflectance
+swir_band = np.random.uniform(0.1, 0.6, image_shape)   # SWIR reflectance
+
+# Simulate water bodies (low SWIR, high green reflectance)
+water_mask = np.zeros(image_shape)
+water_mask[30:70, 30:70] = 1
+
+green_band[water_mask == 1] = np.random.uniform(0.4, 0.6)
+swir_band[water_mask == 1] = np.random.uniform(0.1, 0.2)
+
+# Step 2: Compute MNDWI
+def compute_mndwi(green, swir):
+    return (green - swir) / (green + swir + 1e-6)
+
+mndwi = compute_mndwi(green_band, swir_band)
+
+# Step 3: Threshold to Detect Water Bodies
+# Common MNDWI threshold is 0
+water_detected = mndwi > 0
+
+# Step 4: Visualization
+fig, axs = plt.subplots(1, 4, figsize=(20, 5))
+
+axs[0].imshow(green_band, cmap='Greens')
+axs[0].set_title("Synthetic Green Band")
+
+axs[1].imshow(swir_band, cmap='pink')
+axs[1].set_title("Synthetic SWIR Band")
+
+axs[2].imshow(mndwi, cmap='coolwarm')
+axs[2].set_title("MNDWI")
+
+axs[3].imshow(water_detected, cmap='Blues')
+axs[3].set_title("Detected Water Bodies (MNDWI > 0)")
+
+for ax in axs:
+    ax.axis('off')
+
+plt.tight_layout()
+plt.show()
