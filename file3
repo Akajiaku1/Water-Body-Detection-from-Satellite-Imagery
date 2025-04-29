@@ -1,0 +1,81 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from sklearn.model_selection import train_test_split
+import cv2
+
+# Step 1: Generate synthetic image data (simulate multispectral bands)
+def create_synthetic_data(num_samples=100, img_size=64):
+    X = []
+    Y = []
+    for _ in range(num_samples):
+        # Synthetic RGB image
+        image = np.random.rand(img_size, img_size, 3)
+
+        # Synthetic water mask (center circle)
+        mask = np.zeros((img_size, img_size, 1))
+        cv2.circle(mask, (img_size//2, img_size//2), img_size//4, (1,), -1)
+
+        X.append(image)
+        Y.append(mask)
+    return np.array(X), np.array(Y)
+
+X, Y = create_synthetic_data(num_samples=200)
+
+# Step 2: Split into train/test sets
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+
+# Step 3: Define U-Net-like CNN model
+def build_unet_model(input_shape):
+    inputs = layers.Input(input_shape)
+
+    # Encoder
+    c1 = layers.Conv2D(16, 3, activation='relu', padding='same')(inputs)
+    c1 = layers.Conv2D(16, 3, activation='relu', padding='same')(c1)
+    p1 = layers.MaxPooling2D()(c1)
+
+    c2 = layers.Conv2D(32, 3, activation='relu', padding='same')(p1)
+    c2 = layers.Conv2D(32, 3, activation='relu', padding='same')(c2)
+    p2 = layers.MaxPooling2D()(c2)
+
+    # Bottleneck
+    b = layers.Conv2D(64, 3, activation='relu', padding='same')(p2)
+
+    # Decoder
+    u1 = layers.UpSampling2D()(b)
+    concat1 = layers.concatenate([u1, c2])
+    c3 = layers.Conv2D(32, 3, activation='relu', padding='same')(concat1)
+
+    u2 = layers.UpSampling2D()(c3)
+    concat2 = layers.concatenate([u2, c1])
+    c4 = layers.Conv2D(16, 3, activation='relu', padding='same')(concat2)
+
+    outputs = layers.Conv2D(1, 1, activation='sigmoid')(c4)
+
+    model = models.Model(inputs, outputs)
+    return model
+
+# Step 4: Compile and Train
+model = build_unet_model((64, 64, 3))
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model.fit(X_train, Y_train, epochs=10, batch_size=8, validation_split=0.1)
+
+# Step 5: Predict and Visualize
+preds = model.predict(X_test[:5])
+
+for i in range(5):
+    fig, axs = plt.subplots(1, 3, figsize=(10, 4))
+    axs[0].imshow(X_test[i])
+    axs[0].set_title('Input Image')
+
+    axs[1].imshow(Y_test[i].squeeze(), cmap='gray')
+    axs[1].set_title('True Water Mask')
+
+    axs[2].imshow(preds[i].squeeze() > 0.5, cmap='Blues')
+    axs[2].set_title('Predicted Water Mask')
+
+    for ax in axs:
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
